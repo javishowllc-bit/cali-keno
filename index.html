@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cali Keno">
+<meta name="theme-color" content="#ffffff">
+<title>Cali Keno</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: #fff; color: #111; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+         font-size: 19px; line-height: 1.35;
+         padding: env(safe-area-inset-top) 10px calc(env(safe-area-inset-bottom) + 16px) 10px;
+         max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 8px 0 2px; }
+  h2 { font-size: 22px; margin: 18px 0 8px; }
+  .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+  .credits { text-align: right; font-weight: 800; font-size: 24px; }
+  .credits small { display: block; font-size: 14px; font-weight: 600; color: #333; }
+  .note { font-size: 15px; color: #333; }
+  .tabs { display: flex; gap: 6px; margin: 10px 0; }
+  .tabs button { flex: 1; }
+  button { font: inherit; font-weight: 700; color: #111; background: #fff;
+           border: 2px solid #111; border-radius: 10px; padding: 10px 8px; min-height: 48px; cursor: pointer; }
+  button.on { background: #111; color: #fff; }
+  button.primary { background: #0a4fd6; border-color: #0a4fd6; color: #fff; font-size: 22px; width: 100%; min-height: 60px; }
+  button:disabled { opacity: .45; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+  .row > .lbl { font-weight: 700; min-width: 90px; }
+  .seg { display: flex; flex: 1; gap: 6px; }
+  .seg button { flex: 1; }
+  .stepper { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .stepper button { width: 56px; font-size: 26px; padding: 4px; }
+  .stepper output { font-size: 26px; font-weight: 800; min-width: 44px; text-align: center; }
+  .quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+  .quick button { font-size: 18px; }
+  #grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin: 10px 0; user-select: none; }
+  .cell { position: relative; aspect-ratio: 1 / 1; min-height: 40px; display: flex; align-items: center; justify-content: center;
+          font-size: 21px; font-weight: 800; color: #111; background: #fff; border: 2px solid #777; border-radius: 8px;
+          padding: 0; transition: background .15s, transform .15s; }
+  .cell.pick { border: 4px solid #0a4fd6; color: #0a3aa0; }
+  .cell.drawn { background: #d9d9d9; border-color: #555; }
+  .cell.match { background: #8fe38f; border: 4px solid #0b6b0b; color: #000; }
+  .cell.be { outline: 5px solid #d40000; outline-offset: -1px; z-index: 1; }
+  .cell.be::after { content: "BE"; position: absolute; top: 0; right: 2px; font-size: 10px; font-weight: 900; color: #b00000; }
+  .cell.pop { transform: scale(1.18); }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .sw { display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 2px solid #555; }
+  .result { border: 3px solid #111; border-radius: 12px; padding: 10px 12px; margin: 10px 0; font-size: 20px; min-height: 60px; }
+  .result.win { border-color: #0b6b0b; }
+  .big { font-size: 28px; font-weight: 900; }
+  table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #bbb; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=text], input[type=number], select { font: inherit; font-size: 20px; padding: 8px; border: 2px solid #111;
+          border-radius: 8px; background: #fff; color: #111; width: 100%; }
+  .prog { height: 16px; border: 2px solid #111; border-radius: 8px; overflow: hidden; margin: 8px 0; }
+  .prog div { height: 100%; width: 0; background: #0a4fd6; }
+  .hidden { display: none !important; }
+  .pay td { padding: 4px; }
+  .won { color: #0b6b0b; font-weight: 800; }
+  .lost { color: #8a0000; }
+  .livebox { border: 4px solid #111; border-radius: 14px; padding: 10px 12px; margin: 8px 0 10px; text-align: center; }
+  .livehead { font-size: 15px; font-weight: 800; letter-spacing: .03em; color: #b00000; }
+  .cdlabel { font-size: 18px; font-weight: 700; margin-top: 4px; }
+  .countdown { font-size: 76px; font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .nextinfo { font-size: 20px; margin: 4px 0; }
+  .ticket { border: 3px solid #0a4fd6; border-radius: 12px; padding: 10px 12px; margin: 10px 0; font-size: 18px; }
+  .ticket .thead { font-weight: 800; color: #0a3aa0; }
+</style>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>Cali Keno</h1>
+    <div class="note">Play for fun &middot; fake credits only</div>
+  </div>
+  <div class="credits"><small>Credits</small><span id="credits">1,000</span></div>
+</div>
+
+<div class="tabs">
+  <button id="tabPlay" class="on">Play</button>
+  <button id="tabSim">Simulator</button>
+  <button id="tabHelp">Paytable</button>
+</div>
+
+<!-- ============================== PLAY ============================== -->
+<section id="play">
+  <div class="row"><span class="lbl">Mode</span>
+    <div class="seg"><button id="modeInstant" class="on">Instant</button><button id="modeLive">Live</button></div></div>
+
+  <div id="liveBox" class="livebox hidden" aria-live="polite">
+    <div class="livehead">LIVE &middot; every 4 min &middot; 6:04 AM&ndash;2:00 AM PT</div>
+    <div id="cdLabel" class="cdlabel">Next draw in</div>
+    <div id="countdown" class="countdown">--:--</div>
+    <div id="nextInfo" class="nextinfo"></div>
+    <div id="lastInfo" class="note"></div>
+  </div>
+
+  <div id="cardControls">
+  <div class="row"><span class="lbl">Spots</span>
+    <div class="seg"><button id="spot3" class="on">3-spot</button><button id="spot4">4-spot</button></div></div>
+  <div class="row"><span class="lbl">Bulls-eye</span>
+    <div class="seg"><button id="beOn" class="on">ON (+$2)</button><button id="beOff">OFF</button></div></div>
+  <div class="row"><span class="lbl">Draws</span>
+    <div class="stepper"><button id="drMinus" aria-label="fewer draws">&minus;</button><output id="drawsOut">1</output>
+      <button id="drPlus" aria-label="more draws">+</button></div></div>
+
+  <div class="quick" id="quick"></div>
+  <div class="row">
+    <button id="clearBtn" style="flex:1">Clear</button>
+    <button id="randBtn" style="flex:1">Random pick</button>
+  </div>
+  </div>
+  <div id="pickInfo" class="note" style="font-size:18px;font-weight:700"></div>
+
+  <div id="grid" role="grid" aria-label="Keno numbers 1 to 80"></div>
+  <div class="legend">
+    <span><i class="sw" style="border:3px solid #0a4fd6"></i>Your pick</span>
+    <span><i class="sw" style="background:#d9d9d9"></i>Drawn</span>
+    <span><i class="sw" style="background:#8fe38f;border-color:#0b6b0b"></i>Match</span>
+    <span><i class="sw" style="outline:3px solid #d40000"></i>Bulls-eye</span>
+  </div>
+
+  <div id="result" class="result">Pick 3 or 4 numbers, then tap Play.</div>
+  <button id="playBtn" class="primary">Play</button>
+  <button id="buyBtn" class="primary hidden">Buy ticket</button>
+  <div id="ticketBox" class="ticket hidden"></div>
+  <div id="schedule" class="note" style="margin-top:8px"></div>
+
+  <h2>Recent draws</h2>
+  <table id="hist"><thead><tr><th>Card</th><th>Hits</th><th class="num">Bet</th><th class="num">Won</th></tr></thead><tbody></tbody></table>
+  <div class="row"><button id="resetBtn" style="flex:1">Reset credits to 1,000</button><button id="clrHistBtn" style="flex:1">Clear history</button></div>
+</section>
+
+<!-- ============================== SIMULATOR ============================== -->
+<section id="sim" class="hidden">
+  <h2>Simulator</h2>
+  <div class="row" style="display:block"><label class="lbl" for="simCard">Card (3 or 4 numbers)</label>
+    <select id="simPreset"></select>
+    <input id="simCard" type="text" inputmode="numeric" value="4-7-17" style="margin-top:6px"></div>
+  <div class="row"><span class="lbl">Bulls-eye</span>
+    <div class="seg"><button id="sBeOn" class="on">ON ($4)</button><button id="sBeOff">OFF ($2)</button></div></div>
+  <div class="row" style="display:block"><label class="lbl" for="simN">Number of draws (max 1,000,000)</label>
+    <input id="simN" type="number" min="1" max="1000000" step="1" value="100000"></div>
+  <div class="row"><button id="simRun" class="primary" style="flex:2">Run</button><button id="simStop" style="flex:1" disabled>Stop</button></div>
+  <div class="prog"><div id="simBar"></div></div>
+  <div id="simStatus" class="note"></div>
+  <div id="simOut"></div>
+</section>
+
+<!-- ============================== PAYTABLE ============================== -->
+<section id="help" class="hidden">
+  <h2>How it works</h2>
+  <p>20 of 80 numbers are drawn. One of the 20 is the <b>Bulls-eye</b>. Bet is $2 base, plus $2 Bulls-eye if ON ($4 total).
+  If Bulls-eye is ON and one of your matched numbers is the Bulls-eye, you win the Bulls-eye prize (it replaces the base prize).
+  Otherwise you win the base prize.</p>
+  <div id="payTables"></div>
+  <p class="note">Credits are fake and have no cash value.</p>
+</section>
+
+<script>
+// LOGIC-START  (pure game logic: also exercised by the node check)
+var KENO = (function () {
+  var TOTAL = 80, DRAWN = 20, SIDE = 2;
+  // spots -> matches -> [base per $1, with Bulls-eye per $1]
+  var PAYTABLE = {
+    3: { 3: [25, 155], 2: [2, 20], 1: [0, 6] },
+    4: { 4: [78, 300], 3: [4, 37], 2: [1, 11], 1: [0, 4] }
+  };
+  function betAmount(be) { return SIDE * (be ? 2 : 1); }
+  // Bulls-eye column = total prize for $1 base + $1 Bulls-eye (not added to base).
+  function payout(spots, matches, beHit, beBet) {
+    var t = PAYTABLE[spots];
+    if (!t) throw new Error("only 3-spot and 4-spot cards");
+    var row = t[matches] || [0, 0];
+    return SIDE * ((beBet && beHit) ? row[1] : row[0]);
+  }
+  function comb(n, k) { var r = 1; for (var i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; }
+  function pMatches(s, k) { return comb(s, k) * comb(TOTAL - s, DRAWN - k) / comb(TOTAL, DRAWN); }
+  function tiers(s) { var o = []; for (var k = s; k >= 0; k--) { if (k > 0) o.push([k, true]); o.push([k, false]); } return o; }
+  function tierLabel(s, k, h) { return k + " of " + s + (h ? " + Bulls-eye" : ""); }
+  function tierProb(s, k, h) { var p = pMatches(s, k), q = k / DRAWN; return h ? p * q : p * (1 - q); }
+  function exactEV(s, be) { return tiers(s).reduce(function (a, t) { return a + tierProb(s, t[0], t[1]) * payout(s, t[0], t[1], be); }, 0); }
+  function pWin(s, be) { return tiers(s).reduce(function (a, t) { return a + (payout(s, t[0], t[1], be) > 0 ? tierProb(s, t[0], t[1]) : 0); }, 0); }
+
+  // ---- cryptographically secure RNG: buffered crypto.getRandomValues + rejection sampling
+  var cryptoObj = (typeof crypto !== "undefined") ? crypto : null;
+  var buf = new Uint8Array(65536), pos = buf.length;
+  function byte() { if (pos >= buf.length) { cryptoObj.getRandomValues(buf); pos = 0; } return buf[pos++]; }
+  function below(m) { var lim = 256 - (256 % m), b; do { b = byte(); } while (b >= lim); return b % m; }
+  var pool = new Uint8Array(TOTAL);
+  // returns {nums: [20 in draw order], be: bulls-eye number}
+  function draw() {
+    for (var i = 0; i < TOTAL; i++) pool[i] = i + 1;
+    for (i = 0; i < DRAWN; i++) { var j = i + below(TOTAL - i), t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+    var nums = Array.prototype.slice.call(pool, 0, DRAWN);
+    return { nums: nums, be: nums[below(DRAWN)] };
+  }
+  function evaluate(card, d) {
+    var m = 0, hit = false;
+    for (var i = 0; i < card.length; i++) { if (d.nums.indexOf(card[i]) >= 0) { m++; if (card[i] === d.be) hit = true; } }
+    return { matches: m, beHit: hit };
+  }
+  // Simulation state, advanced in chunks so the UI stays responsive.
+  function newSim(card, be) {
+    var st = { card: card.slice(), spots: card.length, be: be, bet: betAmount(be), draws: 0, totalBet: 0, totalWon: 0,
+               wins: 0, longestLosing: 0, cur: 0, counts: {} };
+    tiers(card.length).forEach(function (t) { st.counts[t[0] + (t[1] ? "B" : "")] = 0; });
+    return st;
+  }
+  var inCard = new Uint8Array(TOTAL + 1);
+  function runChunk(st, n) {
+    inCard.fill(0); st.card.forEach(function (x) { inCard[x] = 1; });
+    for (var r = 0; r < n; r++) {
+      for (var i = 0; i < TOTAL; i++) pool[i] = i + 1;
+      var m = 0;
+      for (i = 0; i < DRAWN; i++) { var j = i + below(TOTAL - i), t = pool[i]; pool[i] = pool[j]; pool[j] = t; m += inCard[pool[i]]; }
+      var beNum = pool[below(DRAWN)], hit = inCard[beNum] === 1;
+      var won = payout(st.spots, m, hit, st.be);
+      st.draws++; st.totalBet += st.bet; st.totalWon += won; st.counts[m + (hit ? "B" : "")]++;
+      if (won > 0) { st.wins++; st.cur = 0; } else { st.cur++; if (st.cur > st.longestLosing) st.longestLosing = st.cur; }
+    }
+    return st;
+  }
+  // ---- Live schedule (America/Los_Angeles wall clock): a draw every 4 minutes,
+  // 6:04 AM through 2:00 AM the next morning (300 draws per day), none 2:00-6:04 AM.
+  // Draw index 0 = 6:04 AM PT on Jan 1, 2026; running draw number = index + 1.
+  var TZ = "America/Los_Angeles", FIRST_MIN = 6 * 60 + 4, LAST_MIN = 26 * 60, STEP_MIN = 4;
+  var PER_DAY = (LAST_MIN - FIRST_MIN) / STEP_MIN + 1; // 300
+  var EPOCH_DAY = Date.UTC(2026, 0, 1), HOUR = 3600000, MIN = 60000;
+  var fmtr = null;
+  try { fmtr = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hourCycle: "h23", year: "numeric", month: "numeric",
+        day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" }); } catch (e) { fmtr = null; }
+  function ruleIsDST(ms) { // US rule: 2nd Sunday of March 2:00 PST -> 1st Sunday of Nov 2:00 PDT
+    var y = new Date(ms - 8 * HOUR).getUTCFullYear();
+    var m1 = new Date(Date.UTC(y, 2, 1)).getUTCDay(), n1 = new Date(Date.UTC(y, 10, 1)).getUTCDay();
+    var start = Date.UTC(y, 2, 1 + (7 - m1) % 7 + 7, 10), end = Date.UTC(y, 10, 1 + (7 - n1) % 7, 9);
+    return ms >= start && ms < end;
+  }
+  function laPartsRule(ms) {
+    var d = new Date(ms + (ruleIsDST(ms) ? -7 : -8) * HOUR);
+    return { y: d.getUTCFullYear(), mo: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), s: d.getUTCSeconds() };
+  }
+  function laPartsIntl(ms) {
+    var o = {}; fmtr.formatToParts(new Date(ms)).forEach(function (p) { o[p.type] = p.value; });
+    var h = +o.hour; if (h === 24) h = 0;
+    return { y: +o.year, mo: +o.month, d: +o.day, h: h, mi: +o.minute, s: +o.second };
+  }
+  var useIntl = !!(fmtr && fmtr.formatToParts);
+  if (useIntl) { try { if (laPartsIntl(Date.UTC(2026, 6, 1, 12)).h !== 5) useIntl = false; } catch (e) { useIntl = false; } }
+  function laParts(ms) { return useIntl ? laPartsIntl(ms) : laPartsRule(ms); }
+  function wallMs(ms) { var p = laParts(ms); return Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s); }
+  // LA wall-clock time -> UTC ms. Ambiguous (fall back): first occurrence. Nonexistent (spring forward): PST reading.
+  function wallToUtc(y, mo, d, minutes) {
+    var naive = Date.UTC(y, mo - 1, d, 0, minutes), c7 = naive + 7 * HOUR, c8 = naive + 8 * HOUR;
+    if (wallMs(c7) === naive) return c7;
+    return c8;
+  }
+  function drawTime(i) {
+    var day = Math.floor(i / PER_DAY), slot = i - day * PER_DAY, c = new Date(EPOCH_DAY + day * 86400000);
+    return wallToUtc(c.getUTCFullYear(), c.getUTCMonth() + 1, c.getUTCDate(), FIRST_MIN + STEP_MIN * slot);
+  }
+  // index of the first scheduled draw strictly after ms
+  function nextDrawIndex(ms) {
+    var p = laParts(ms), day = Math.round((Date.UTC(p.y, p.mo - 1, p.d) - EPOCH_DAY) / 86400000);
+    var mins = p.h * 60 + p.mi + p.s / 60;
+    if (mins <= 120) { day -= 1; mins += 1440; }
+    var slot = Math.ceil((mins - FIRST_MIN) / STEP_MIN);
+    if (slot < 0) slot = 0;
+    if (slot >= PER_DAY) { day += 1; slot = 0; }
+    var i = day * PER_DAY + slot;
+    while (drawTime(i) <= ms) i++;
+    while (drawTime(i - 1) > ms) i--;
+    return i;
+  }
+  function drawNumber(i) { return i + 1; }
+  function slotOfDay(i) { return ((i % PER_DAY) + PER_DAY) % PER_DAY + 1; }
+  function inQuietHours(ms) { var p = laParts(ms), m = p.h * 60 + p.mi; return m >= 120 && m < FIRST_MIN && !(m === 120 && p.s === 0); }
+  function fmtPT(ms) { var p = laParts(ms), h = p.h % 12 || 12; return h + ":" + (p.mi < 10 ? "0" : "") + p.mi + (p.h < 12 ? " AM" : " PM"); }
+  function dayLabelPT(ms, nowMs) {
+    var a = laParts(ms), b = laParts(nowMs);
+    var dd = Math.round((Date.UTC(a.y, a.mo - 1, a.d) - Date.UTC(b.y, b.mo - 1, b.d)) / 86400000);
+    return dd === 0 ? "today" : dd === 1 ? "tomorrow" : (a.mo + "/" + a.d);
+  }
+  // ---- Live tickets: bought ahead, credits paid at purchase, play the next `draws` scheduled draws.
+  function newTicket(card, be, draws, nowMs, cutoffMs) {
+    var c = card.slice().sort(function (a, b) { return a - b; });
+    return { card: c, spots: c.length, be: !!be, draws: draws, bet: betAmount(be), cost: betAmount(be) * draws,
+             first: nextDrawIndex(nowMs + (cutoffMs || 0)), bought: nowMs, results: {} };
+  }
+  function ticketIndices(t) { var o = []; for (var i = 0; i < t.draws; i++) o.push(t.first + i); return o; }
+  function ticketDue(t, nowMs) { return ticketIndices(t).filter(function (i) { return drawTime(i) <= nowMs && !t.results[i]; }); }
+  function settleTicket(t, i, dr) {
+    var ev = evaluate(t.card, dr), won = payout(t.spots, ev.matches, ev.beHit, t.be);
+    t.results[i] = { matches: ev.matches, beHit: ev.beHit, won: won, bullseye: dr.be };
+    return t.results[i];
+  }
+  function ticketPlayed(t) { return Object.keys(t.results).length; }
+  function ticketDone(t) { return ticketPlayed(t) >= t.draws; }
+  function ticketWon(t) { return Object.keys(t.results).reduce(function (a, k) { return a + t.results[k].won; }, 0); }
+  return { TOTAL: TOTAL, DRAWN: DRAWN, SIDE: SIDE, PAYTABLE: PAYTABLE, betAmount: betAmount, payout: payout,
+           pMatches: pMatches, tiers: tiers, tierLabel: tierLabel, tierProb: tierProb, exactEV: exactEV, pWin: pWin,
+           below: below, draw: draw, evaluate: evaluate, newSim: newSim, runChunk: runChunk,
+           PER_DAY: PER_DAY, laParts: laParts, laPartsRule: laPartsRule, wallToUtc: wallToUtc, drawTime: drawTime,
+           nextDrawIndex: nextDrawIndex, drawNumber: drawNumber, slotOfDay: slotOfDay, inQuietHours: inQuietHours,
+           fmtPT: fmtPT, dayLabelPT: dayLabelPT, newTicket: newTicket, ticketIndices: ticketIndices, ticketDue: ticketDue,
+           settleTicket: settleTicket, ticketPlayed: ticketPlayed, ticketDone: ticketDone, ticketWon: ticketWon,
+           usingIntl: function () { return useIntl; }, _setUseIntl: function (v) { useIntl = !!v && !!fmtr; } };
+})();
+if (typeof module !== "undefined") module.exports = KENO;
+// LOGIC-END
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var K = KENO;
+  var SAVED = [[4, 7, 17], [1, 11, 22], [29, 38, 39], [59, 68, 69], [4, 7, 17, 27]];
+  var CUTOFF_MS = 10000;          // tickets bought < 10 s before a draw start at the following draw
+  var AUTO_WINDOW_MS = 60000;     // page-open board draw: generated if its time passed < 60 s ago
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return Math.round(n).toLocaleString("en-US"); };
+  var money = function (n) { return "$" + fmt(n); };
+  var sortNum = function (a, b) { return a - b; };
+
+  // ---------- persistent state
+  function load(key, def) { try { var v = localStorage.getItem(key); return v === null ? def : JSON.parse(v); } catch (e) { return def; } }
+  function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) {} }
+  var state = {
+    credits: load("calikeno.credits", 1000),
+    history: load("calikeno.history", []),
+    mode: load("calikeno.mode", "instant") === "live" ? "live" : "instant",
+    ticket: load("calikeno.ticket", null),
+    spots: 3, be: true, draws: 1, picks: [], busy: false, shownLive: null
+  };
+  if (typeof state.credits !== "number" || !isFinite(state.credits)) state.credits = 1000;
+  if (!Array.isArray(state.history)) state.history = [];
+  function saveCredits() { save("calikeno.credits", state.credits); }
+  function saveTicket() { save("calikeno.ticket", state.ticket); }
+  function addHistory(h) { state.history.unshift(h); state.history = state.history.slice(0, 50); save("calikeno.history", state.history); }
+  function activeTicket() { return state.ticket && !K.ticketDone(state.ticket) ? state.ticket : null; }
+  function isLive() { return state.mode === "live"; }
+
+  // ---------- grid
+  var cells = [];
+  var grid = $("grid");
+  for (var n = 1; n <= 80; n++) {
+    var b = document.createElement("button");
+    b.className = "cell"; b.textContent = n; b.dataset.n = n; b.setAttribute("aria-label", "number " + n);
+    grid.appendChild(b); cells[n] = b;
+  }
+  function locked() { return state.busy || (isLive() && activeTicket()); }
+  function lockMsg() { flash(state.busy ? "Please wait for the draw to finish." : "Your Live ticket is in play. You can buy a new one when it finishes."); }
+  grid.addEventListener("click", function (e) {
+    var t = e.target.closest(".cell"); if (!t) return;
+    if (locked()) { lockMsg(); return; }
+    var v = +t.dataset.n, i = state.picks.indexOf(v);
+    if (i >= 0) state.picks.splice(i, 1);
+    else if (state.picks.length < state.spots) state.picks.push(v);
+    else { flash("You already have " + state.spots + " numbers. Tap one to remove it."); return; }
+    clearDraw(); render();
+  });
+  function clearDraw() { cells.forEach(function (c) { if (c) c.classList.remove("drawn", "match", "be", "pop"); }); }
+  function flash(msg) { var r = $("result"); r.className = "result"; r.textContent = msg; }
+  function shownCard() { var t = isLive() && activeTicket(); return t ? t.card : state.picks; }
+  function showBoard(card, dr) {
+    clearDraw();
+    dr.nums.forEach(function (x) { cells[x].classList.add("drawn"); if (card.indexOf(x) >= 0) cells[x].classList.add("match"); });
+    cells[dr.be].classList.add("be");
+  }
+  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  async function reveal(card, dr, delay) {
+    clearDraw();
+    for (var i = 0; i < dr.nums.length; i++) {
+      var c = cells[dr.nums[i]];
+      c.classList.add("drawn", "pop");
+      if (card.indexOf(dr.nums[i]) >= 0) c.classList.add("match");
+      (function (cc) { setTimeout(function () { cc.classList.remove("pop"); }, 140); })(c);
+      await sleep(delay);
+    }
+    await sleep(delay * 2);
+    cells[dr.be].classList.add("be", "pop");
+    setTimeout(function () { cells.forEach(function (c) { if (c) c.classList.remove("pop"); }); }, 200);
+  }
+
+  // ---------- controls
+  function setSpots(s) {
+    if (locked()) { lockMsg(); return; }
+    state.spots = s; if (state.picks.length > s) state.picks = state.picks.slice(0, s);
+    render();
+  }
+  function setBE(v) { if (locked()) { lockMsg(); return; } state.be = v; render(); }
+  function setMode(m) {
+    if (state.busy) { lockMsg(); return; }
+    state.mode = m; save("calikeno.mode", m); clearDraw();
+    if (m === "live") {
+      var last = latestLiveDraw();
+      if (last) showBoard(shownCard(), last.draw);
+      $("result").className = "result";
+      $("result").innerHTML = activeTicket() ? "Your ticket plays automatically on each scheduled draw. Keep this page open, or come back later: missed draws are caught up."
+        : "Pick a card and buy a ticket. It plays on the next scheduled draws.";
+    } else flash("Instant mode: tap Play and the draw happens right away.");
+    render(); tick();
+  }
+  $("spot3").onclick = function () { setSpots(3); };
+  $("spot4").onclick = function () { setSpots(4); };
+  $("beOn").onclick = function () { setBE(true); };
+  $("beOff").onclick = function () { setBE(false); };
+  $("modeInstant").onclick = function () { setMode("instant"); };
+  $("modeLive").onclick = function () { setMode("live"); };
+  $("drMinus").onclick = function () { if (locked()) return lockMsg(); state.draws = Math.max(1, state.draws - 1); render(); };
+  $("drPlus").onclick = function () { if (locked()) return lockMsg(); state.draws = Math.min(20, state.draws + 1); render(); };
+  $("clearBtn").onclick = function () { if (locked()) return lockMsg(); state.picks = []; clearDraw(); render(); };
+  $("randBtn").onclick = function () {
+    if (locked()) return lockMsg(); var p = [];
+    while (p.length < state.spots) { var v = K.below(80) + 1; if (p.indexOf(v) < 0) p.push(v); }
+    state.picks = p; clearDraw(); render();
+  };
+  SAVED.forEach(function (card) {
+    var q = document.createElement("button"); q.textContent = card.join("-");
+    q.onclick = function () { if (locked()) return lockMsg(); state.spots = card.length; state.picks = card.slice(); clearDraw(); render(); };
+    $("quick").appendChild(q);
+  });
+  $("resetBtn").onclick = function () {
+    if (state.busy) return;
+    if (confirm("Reset fake credits to 1,000?")) { state.credits = 1000; saveCredits(); render(); }
+  };
+  $("clrHistBtn").onclick = function () { if (!state.busy) { state.history = []; save("calikeno.history", []); renderHist(); } };
+
+  function cost() { return K.betAmount(state.be) * state.draws; }
+  function sortedCard() { return state.picks.slice().sort(sortNum); }
+
+  function render() {
+    var live = isLive(), t = activeTicket();
+    $("credits").textContent = fmt(state.credits);
+    $("modeInstant").classList.toggle("on", !live); $("modeLive").classList.toggle("on", live);
+    $("spot3").classList.toggle("on", state.spots === 3); $("spot4").classList.toggle("on", state.spots === 4);
+    $("beOn").classList.toggle("on", state.be); $("beOff").classList.toggle("on", !state.be);
+    $("drawsOut").textContent = state.draws;
+    var card = shownCard();
+    cells.forEach(function (c, i) { if (c) c.classList.toggle("pick", card.indexOf(i) >= 0); });
+    $("liveBox").classList.toggle("hidden", !live);
+    $("cardControls").classList.toggle("hidden", !!(live && t));
+    $("playBtn").classList.toggle("hidden", live);
+    $("buyBtn").classList.toggle("hidden", live && !!t || !live);
+    var need = state.spots - state.picks.length;
+    if (live && t) $("pickInfo").textContent = "Ticket in play: " + t.card.join("-") + (t.be ? " + Bulls-eye" : "");
+    else $("pickInfo").textContent = need > 0
+      ? "Pick " + need + " more number" + (need > 1 ? "s" : "") + " (" + state.spots + "-spot)"
+      : "Card: " + sortedCard().join("-") + "  \u00b7  " + money(K.betAmount(state.be)) + " x " + state.draws + " draw" + (state.draws > 1 ? "s" : "") + " = " + money(cost());
+    var pb = $("playBtn");
+    pb.disabled = state.busy || need > 0;
+    pb.textContent = state.busy ? "Drawing..." : "Play  " + money(cost());
+    if (live && !t) {
+      var first = K.nextDrawIndex(Date.now() + CUTOFF_MS), bb = $("buyBtn");
+      bb.disabled = state.busy || need > 0;
+      bb.textContent = "Buy ticket " + money(cost()) + " \u00b7 draw" + (state.draws > 1 ? "s #" + fmt(first + 1) + "\u2013#" + fmt(first + state.draws) : " #" + fmt(first + 1));
+    }
+    renderTicket();
+    $("schedule").textContent = live
+      ? "Tickets bought less than 10 seconds before a draw start with the following draw. Credits are paid when you buy."
+      : "Instant mode: your game draws right away. Switch to Live for the real-time 4-minute schedule.";
+  }
+
+  function renderTicket() {
+    var box = $("ticketBox"), t = state.ticket;
+    if (!isLive() || !t) { box.classList.add("hidden"); return; }
+    box.classList.remove("hidden");
+    var played = K.ticketPlayed(t), won = K.ticketWon(t), done = K.ticketDone(t);
+    var h = "<div class='thead'>" + (done ? "Last ticket (finished)" : "Your ticket") + "</div>" +
+      "<div class='big'>" + t.card.join("-") + "</div>" +
+      "<div>" + t.spots + "-spot \u00b7 Bulls-eye " + (t.be ? "ON" : "OFF") + " \u00b7 " + money(t.bet) + " x " + t.draws + " = " + money(t.cost) + " paid</div>" +
+      "<div>Draws #" + fmt(t.first + 1) + (t.draws > 1 ? "\u2013#" + fmt(t.first + t.draws) : "") + " \u00b7 starts " + K.fmtPT(K.drawTime(t.first)) + " PT " + K.dayLabelPT(K.drawTime(t.first), Date.now()) + "</div>" +
+      "<div><b>Played " + played + " of " + t.draws + " \u00b7 won " + money(won) + "</b>" + (done ? " \u00b7 net " + (won - t.cost >= 0 ? "+" : "\u2212") + money(Math.abs(won - t.cost)) : "") + "</div>";
+    if (played) {
+      h += "<table><tbody>";
+      K.ticketIndices(t).filter(function (i) { return t.results[i]; }).reverse().slice(0, 20).forEach(function (i) {
+        var r = t.results[i];
+        h += "<tr><td>#" + fmt(i + 1) + "<br><span class='note'>" + K.fmtPT(K.drawTime(i)) + "</span></td><td>" + r.matches + "/" + t.spots + (r.beHit ? " +BE" : "") +
+          "<br><span class='note'>BE " + r.bullseye + "</span></td><td class='num " + (r.won > 0 ? "won" : "lost") + "'>" + money(r.won) + "</td></tr>";
+      });
+      h += "</tbody></table>";
+    }
+    if (done) h += "<button id='newTicketBtn' style='width:100%;margin-top:8px'>Start a new ticket</button>";
+    box.innerHTML = h;
+    var nb = $("newTicketBtn");
+    if (nb) nb.onclick = function () { state.ticket = null; saveTicket(); state.picks = t.card.slice(); state.spots = t.spots; state.be = t.be; render(); };
+  }
+
+  function renderHist() {
+    var tb = $("hist").querySelector("tbody"); tb.innerHTML = "";
+    if (!state.history.length) { tb.innerHTML = '<tr><td colspan="4" class="note">No draws yet.</td></tr>'; return; }
+    state.history.slice(0, 30).forEach(function (h) {
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + h.card + (h.be ? "" : " <span class='note'>(no BE)</span>") + "<br><span class='note'>" +
+        (h.drawNo ? "Live #" + fmt(h.drawNo) + " \u00b7 " : "") + "BE " + h.bullseye + "</span></td>" +
+        "<td>" + h.matches + "/" + h.spots + (h.beHit ? " +BE" : "") + "</td>" +
+        "<td class='num'>" + (h.prepaid ? "paid" : money(h.bet)) + "</td><td class='num " + (h.won > 0 ? "won" : "lost") + "'>" + money(h.won) + "</td>";
+      tb.appendChild(tr);
+    });
+  }
+
+  // ---------- Instant mode
+  async function play() {
+    if (state.busy || state.picks.length !== state.spots) return;
+    var bet = K.betAmount(state.be);
+    if (state.credits < bet) { flash("Not enough credits. Tap \u201cReset credits to 1,000\u201d to keep playing."); return; }
+    state.busy = true; render();
+    var card = sortedCard(), totalWon = 0, played = 0, multi = state.draws > 1;
+    var delay = multi ? Math.max(25, 90 - state.draws * 3) : 110;
+    for (var d = 0; d < state.draws; d++) {
+      if (state.credits < bet) break;
+      state.credits -= bet; saveCredits(); render();
+      var dr = K.draw(), ev = K.evaluate(card, dr), won = K.payout(state.spots, ev.matches, ev.beHit, state.be);
+      var r = $("result"); r.className = "result";
+      r.innerHTML = "<b>Draw " + (d + 1) + " of " + state.draws + "</b> \u2026 drawing";
+      await reveal(card, dr, delay);
+      state.credits += won; totalWon += won; played++; saveCredits();
+      addHistory({ t: Date.now(), card: card.join("-"), spots: state.spots, be: state.be, nums: dr.nums.slice().sort(sortNum),
+        bullseye: dr.be, matches: ev.matches, beHit: ev.beHit, bet: bet, won: won });
+      r.className = "result" + (won > 0 ? " win" : "");
+      r.innerHTML = "<b>Draw " + (d + 1) + " of " + state.draws + ":</b> " + ev.matches + " of " + state.spots + " matched" +
+        (ev.beHit ? " <b style='color:#b00000'>+ Bulls-eye!</b>" : "") + "<br>Bulls-eye number: <b>" + dr.be + "</b><br>" +
+        (won > 0 ? "<span class='big won'>WIN " + money(won) + "</span>" : "<span class='big'>No win</span>") +
+        (multi ? "<br><span class='note'>Running total: bet " + money(bet * played) + ", won " + money(totalWon) + "</span>" : "");
+      render(); renderHist();
+      await sleep(multi ? 900 : 200);
+    }
+    if (multi) {
+      $("result").innerHTML += "<br><b>" + played + " draws done. Net: " + (totalWon - bet * played >= 0 ? "+" : "\u2212") + money(Math.abs(totalWon - bet * played)) + "</b>" +
+        (played < state.draws ? "<br>Stopped early: not enough credits." : "");
+    }
+    state.busy = false; render(); tick();
+  }
+  $("playBtn").onclick = play;
+
+  // ---------- Live mode
+  function liveDraws() { var d = load("calikeno.liveDraws", {}); return (d && typeof d === "object") ? d : {}; }
+  function latestLiveDraw() {
+    var d = liveDraws(), ks = Object.keys(d).map(Number).sort(sortNum);
+    return ks.length ? { index: ks[ks.length - 1], draw: d[ks[ks.length - 1]] } : null;
+  }
+  // Returns the stored draw for index i, creating it (secure RNG) if it doesn't exist yet.
+  function ensureDraw(i, created) {
+    var d = liveDraws();                 // re-read: another open tab may already have drawn it
+    if (!d[i]) {
+      d[i] = K.draw(); created.push(i);
+      var ks = Object.keys(d).map(Number).sort(sortNum);
+      while (ks.length > 60) delete d[ks.shift()];
+      save("calikeno.liveDraws", d);
+    }
+    return d[i];
+  }
+  function buyTicket() {
+    if (state.busy || activeTicket() || state.picks.length !== state.spots) return;
+    var t = K.newTicket(state.picks, state.be, state.draws, Date.now(), CUTOFF_MS);
+    if (state.credits < t.cost) { flash("Not enough credits for this ticket (" + money(t.cost) + "). Lower the draws or reset credits."); return; }
+    state.credits -= t.cost; saveCredits();
+    state.ticket = t; saveTicket();
+    clearDraw();
+    var r = $("result"); r.className = "result";
+    r.innerHTML = "<b>Ticket bought: " + money(t.cost) + "</b><br>" + t.card.join("-") + " plays draw" + (t.draws > 1 ? "s #" + fmt(t.first + 1) + "\u2013#" + fmt(t.first + t.draws) : " #" + fmt(t.first + 1)) +
+      ", starting " + K.fmtPT(K.drawTime(t.first)) + " PT.";
+    render();
+  }
+  $("buyBtn").onclick = buyTicket;
+
+  var processing = false;
+  async function processLive(now) {
+    if (state.busy || processing) return;
+    processing = true;
+    try {
+      var created = [], settled = [], t = state.ticket;
+      if (t) K.ticketDue(t, now).forEach(function (i) {
+        var dr = ensureDraw(i, created), r = K.settleTicket(t, i, dr);
+        state.credits += r.won;
+        settled.push(i);
+        addHistory({ t: K.drawTime(i), drawNo: i + 1, card: t.card.join("-"), spots: t.spots, be: t.be, nums: dr.nums.slice().sort(sortNum),
+          bullseye: dr.be, matches: r.matches, beHit: r.beHit, bet: t.bet, won: r.won, prepaid: true });
+      });
+      if (settled.length) { saveTicket(); saveCredits(); }
+      var last = K.nextDrawIndex(now) - 1;
+      if (now - K.drawTime(last) < AUTO_WINDOW_MS) ensureDraw(last, created);
+      var show = latestLiveDraw();
+      if (!show) { if (settled.length) { render(); renderHist(); } return; }
+      var isNew = state.shownLive !== show.index;
+      if (!isNew && !settled.length) return;
+      state.shownLive = show.index;
+      renderHist();
+      if (!isLive()) { render(); return; }
+      var card = t ? t.card : state.picks, res = t && t.results[show.index];
+      var fresh = created.indexOf(show.index) >= 0 && now - K.drawTime(show.index) < AUTO_WINDOW_MS;
+      var r = $("result");
+      if (fresh && document.visibilityState !== "hidden") {
+        state.busy = true; render();
+        r.className = "result"; r.innerHTML = "<b>Live draw #" + fmt(show.index + 1) + "</b> \u2026 drawing";
+        await reveal(card, show.draw, 110);
+        state.busy = false;
+      } else showBoard(card, show.draw);
+      var msg = "<b>Live draw #" + fmt(show.index + 1) + "</b> \u00b7 " + K.fmtPT(K.drawTime(show.index)) + " PT<br>Bulls-eye number: <b>" + show.draw.be + "</b>";
+      if (res) {
+        msg += "<br>Your ticket: " + res.matches + " of " + t.spots + " matched" + (res.beHit ? " <b style='color:#b00000'>+ Bulls-eye!</b>" : "") + "<br>" +
+          (res.won > 0 ? "<span class='big won'>WIN " + money(res.won) + "</span>" : "<span class='big'>No win</span>");
+      } else if (t && !K.ticketDone(t)) msg += "<br>Your ticket starts with draw #" + fmt(t.first + 1) + ".";
+      var caught = settled.filter(function (i) { return i !== show.index; });
+      if (caught.length) {
+        var cw = caught.reduce(function (a, i) { return a + t.results[i].won; }, 0);
+        msg += "<br><span class='note'>Caught up " + caught.length + " earlier ticket draw" + (caught.length > 1 ? "s" : "") + " while away: won " + money(cw) + ".</span>";
+      }
+      if (t && K.ticketDone(t) && settled.length) msg += "<br><b>Ticket finished: won " + money(K.ticketWon(t)) + " on " + money(t.cost) + ".</b>";
+      r.className = "result" + (res && res.won > 0 ? " win" : ""); r.innerHTML = msg;
+      render();
+    } finally { processing = false; }
+  }
+
+  function two(n) { return (n < 10 ? "0" : "") + n; }
+  function updateCountdown(now) {
+    if (!isLive()) return;
+    var i = K.nextDrawIndex(now), at = K.drawTime(i), rem = Math.max(0, at - now), sec = Math.ceil(rem / 1000);
+    var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    $("countdown").textContent = h ? h + ":" + two(m) + ":" + two(s) : m + ":" + two(s);
+    var quiet = K.inQuietHours(now);
+    $("cdLabel").textContent = quiet ? "No draws 2:00\u20136:04 AM PT. First draw in" : "Next draw in";
+    $("nextInfo").innerHTML = "Draw <b>#" + fmt(i + 1) + "</b> at <b>" + K.fmtPT(at) + " PT</b>" + (K.dayLabelPT(at, now) === "today" ? "" : " " + K.dayLabelPT(at, now)) +
+      "<br>Draw " + K.slotOfDay(i) + " of " + K.PER_DAY + (quiet ? "" : " today");
+    var t = activeTicket();
+    $("lastInfo").textContent = t
+      ? (K.ticketPlayed(t) === 0 ? "Your ticket starts with draw #" + fmt(t.first + 1) + " at " + K.fmtPT(K.drawTime(t.first)) + " PT."
+                                 : "Your ticket: " + K.ticketPlayed(t) + " of " + t.draws + " draws played, won " + money(K.ticketWon(t)) + ".")
+      : "Last draw: #" + fmt(i) + " at " + K.fmtPT(K.drawTime(i - 1)) + " PT";
+  }
+  var lastRenderMinute = -1;
+  function tick() {
+    var now = Date.now();
+    updateCountdown(now);
+    processLive(now);
+    var mm = Math.floor(now / 15000);
+    if (mm !== lastRenderMinute) { lastRenderMinute = mm; if (!state.busy) render(); } // keeps "Buy ticket #..." current
+  }
+  setInterval(tick, 250);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") tick(); });
+  window.addEventListener("pageshow", tick);
+  window.addEventListener("storage", function (e) {
+    if (e.key === "calikeno.ticket" || e.key === "calikeno.credits") {
+      state.ticket = load("calikeno.ticket", null); state.credits = load("calikeno.credits", 1000); render();
+    }
+  });
+
+  // ---------- tabs
+  function tab(which) {
+    ["play", "sim", "help"].forEach(function (s) { $(s).classList.toggle("hidden", s !== which); });
+    $("tabPlay").classList.toggle("on", which === "play"); $("tabSim").classList.toggle("on", which === "sim"); $("tabHelp").classList.toggle("on", which === "help");
+  }
+  $("tabPlay").onclick = function () { tab("play"); };
+  $("tabSim").onclick = function () { tab("sim"); };
+  $("tabHelp").onclick = function () { tab("help"); };
+
+  // ---------- paytable tab
+  (function () {
+    var h = "";
+    [3, 4].forEach(function (s) {
+      h += "<h2>" + s + "-spot</h2><table class='pay'><thead><tr><th>Match</th><th class='num'>$2 base</th><th class='num'>$4 with BE hit</th><th class='num'>Odds 1 in</th></tr></thead><tbody>";
+      for (var k = s; k >= 1; k--) {
+        var row = K.PAYTABLE[s][k] || [0, 0];
+        var p = K.pMatches(s, k);
+        h += "<tr><td>" + k + " of " + s + "</td><td class='num'>" + (row[0] ? money(2 * row[0]) : "\u2013") + "</td><td class='num'>" + (row[1] ? money(2 * row[1]) : "\u2013") + "</td><td class='num'>" + (1 / p).toFixed(2) + "</td></tr>";
+      }
+      h += "</tbody></table><p class='note'>Expected return: $" + K.exactEV(s, true).toFixed(3) + " per $4 (" + (K.exactEV(s, true) / 4 * 100).toFixed(1) + "%), $" +
+        K.exactEV(s, false).toFixed(3) + " per $2 base only (" + (K.exactEV(s, false) / 2 * 100).toFixed(1) + "%).</p>";
+    });
+    $("payTables").innerHTML = h;
+  })();
+
+  // ---------- simulator
+  var sel = $("simPreset");
+  SAVED.forEach(function (c) { var o = document.createElement("option"); o.value = o.textContent = c.join("-"); sel.appendChild(o); });
+  var oc = document.createElement("option"); oc.value = ""; oc.textContent = "Custom (type below)"; sel.appendChild(oc);
+  sel.onchange = function () { if (sel.value) $("simCard").value = sel.value; };
+  var simBE = true, simStop = false, simRunning = false;
+  $("sBeOn").onclick = function () { simBE = true; $("sBeOn").classList.add("on"); $("sBeOff").classList.remove("on"); };
+  $("sBeOff").onclick = function () { simBE = false; $("sBeOff").classList.add("on"); $("sBeOn").classList.remove("on"); };
+
+  function parseCard(txt) {
+    var nums = (txt.match(/\d+/g) || []).map(Number);
+    if (nums.length !== 3 && nums.length !== 4) return "Enter exactly 3 or 4 numbers, like 4-7-17.";
+    if (nums.some(function (x) { return x < 1 || x > 80; })) return "Numbers must be 1 to 80.";
+    if (new Set(nums).size !== nums.length) return "Numbers must be different.";
+    return nums.sort(function (a, b) { return a - b; });
+  }
+  function simReport(st, done) {
+    var s = st.spots, ev = K.exactEV(s, st.be), pw = K.pWin(s, st.be), net = st.totalWon - st.totalBet;
+    var h = "<h2>" + st.card.join("-") + " \u00b7 " + s + "-spot \u00b7 " + money(st.bet) + "/draw" + (done ? "" : " (running)") + "</h2>" +
+      "<table><tbody>" +
+      "<tr><td>Draws</td><td class='num'>" + fmt(st.draws) + "</td></tr>" +
+      "<tr><td>Total bet</td><td class='num'>" + money(st.totalBet) + "</td></tr>" +
+      "<tr><td>Total won</td><td class='num'>" + money(st.totalWon) + "</td></tr>" +
+      "<tr><td>Net</td><td class='num " + (net >= 0 ? "won" : "lost") + "'>" + (net >= 0 ? "+" : "\u2212") + money(Math.abs(net)) + "</td></tr>" +
+      "<tr><td>Payback</td><td class='num'><b>" + (st.totalBet ? (st.totalWon / st.totalBet * 100).toFixed(2) : "0") + "%</b><br><span class='note'>exact " + (ev / st.bet * 100).toFixed(2) + "%</span></td></tr>" +
+      "<tr><td>Winning draws</td><td class='num'>" + fmt(st.wins) + " (" + (st.draws ? (st.wins / st.draws * 100).toFixed(2) : "0") + "%)<br><span class='note'>exact " + (pw * 100).toFixed(2) + "%</span></td></tr>" +
+      "<tr><td>Longest losing streak</td><td class='num'>" + fmt(st.longestLosing) + " draws</td></tr>" +
+      "</tbody></table><h2>Prize tiers</h2><table><thead><tr><th>Tier</th><th class='num'>Pays</th><th class='num'>Count</th><th class='num'>Expected</th></tr></thead><tbody>";
+    K.tiers(s).forEach(function (t) {
+      var key = t[0] + (t[1] ? "B" : ""), p = K.tierProb(s, t[0], t[1]), pay = K.payout(s, t[0], t[1], st.be);
+      h += "<tr><td>" + K.tierLabel(s, t[0], t[1]) + "</td><td class='num'>" + money(pay) + "</td><td class='num'>" + fmt(st.counts[key]) +
+        "</td><td class='num'>" + (p * st.draws).toLocaleString("en-US", { maximumFractionDigits: 1 }) + "</td></tr>";
+    });
+    return h + "</tbody></table>";
+  }
+  $("simRun").onclick = function () {
+    if (simRunning) return;
+    var card = parseCard($("simCard").value);
+    if (typeof card === "string") { $("simStatus").textContent = card; return; }
+    var N = Math.floor(+$("simN").value);
+    if (!(N >= 1)) { $("simStatus").textContent = "Enter a number of draws from 1 to 1,000,000."; return; }
+    N = Math.min(N, 1000000); $("simN").value = N;
+    var st = K.newSim(card, simBE), t0 = performance.now();
+    simRunning = true; simStop = false; $("simRun").disabled = true; $("simStop").disabled = false;
+    var CHUNK = 2000, lastPaint = 0;
+    (function step() {
+      if (simStop) { finish(); return; }
+      var end = performance.now() + 30;
+      while (st.draws < N && performance.now() < end) K.runChunk(st, Math.min(CHUNK, N - st.draws));
+      $("simBar").style.width = (st.draws / N * 100) + "%";
+      $("simStatus").textContent = fmt(st.draws) + " / " + fmt(N) + " draws";
+      if (performance.now() - lastPaint > 500) { lastPaint = performance.now(); $("simOut").innerHTML = simReport(st, false); }
+      if (st.draws >= N) finish(); else setTimeout(step, 0);
+    })();
+    function finish() {
+      simRunning = false; $("simRun").disabled = false; $("simStop").disabled = true;
+      $("simStatus").textContent = (simStop ? "Stopped at " : "Done: ") + fmt(st.draws) + " draws in " + ((performance.now() - t0) / 1000).toFixed(1) + " s.";
+      $("simOut").innerHTML = simReport(st, true);
+    }
+  };
+  $("simStop").onclick = function () { simStop = true; };
+
+  if (state.mode === "live") setMode("live"); else render();
+  renderHist(); tick();
+})();
+</script>
+<script>
+// Offline support: register the service worker when served over http(s) (not from file://).
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("service-worker.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
