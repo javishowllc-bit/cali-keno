@@ -86,6 +86,7 @@
   .need { color: #8a0000; }
   .edithead { font-size: 19px; font-weight: 800; margin: 8px 0 2px; }
   .pickinfo { font-size: 18px; margin: 6px 0; }
+  .big-btn { width: 100%; min-height: 60px; font-size: 22px; margin-top: 10px; }
   .primary2 { background: #111; color: #fff; font-size: 20px; }
   table.cres { margin: 6px 0; font-size: 18px; }
   table.cres td { padding: 5px 4px; border-bottom: 1px solid #ccc; vertical-align: middle; }
@@ -169,6 +170,8 @@
   <h2>Recent draws</h2>
   <table id="hist"><thead><tr><th>Card</th><th>Hits</th><th class="num">Bet</th><th class="num">Won</th></tr></thead><tbody></tbody></table>
   <div class="row"><button id="resetBtn" style="flex:1">Reset credits to 1,000</button><button id="clrHistBtn" style="flex:1">Clear history</button></div>
+  <button id="exportBtn" class="primary2 big-btn">Export history (CSV)</button>
+  <p class="note" id="exportMsg">Saves every draw you've played as a spreadsheet file you can text, email, or AirDrop.</p>
 </section>
 
 <!-- ============================== SIMULATOR ============================== -->
@@ -448,7 +451,8 @@ if (typeof module !== "undefined") module.exports = KENO;
   function saveTicket() { save("calikeno.ticket", state.ticket); }
   function saveCards() { save("calikeno.cards", state.cards); }
   if (state.ticket) saveTicket();
-  function addHistory(h) { state.history.unshift(h); state.history = state.history.slice(0, 60); save("calikeno.history", state.history); }
+  var HIST_MAX = 6000;   // rows (one per card per draw); enough for weeks of play, well under localStorage limits
+  function addHistory(h) { state.history.unshift(h); state.history = state.history.slice(0, HIST_MAX); save("calikeno.history", state.history); }
   function activeTicket() { return state.ticket && !K.ticketDone(state.ticket) ? state.ticket : null; }
   function isLive() { return state.mode === "live"; }
   function cur() { return state.cards[state.active]; }
@@ -593,6 +597,53 @@ if (typeof module !== "undefined") module.exports = KENO;
     if (state.busy) return;
     if (confirm("Reset fake credits to 1,000?")) { state.credits = 1000; saveCredits(); render(); }
   };
+
+  // ---------- Export history (CSV)
+  function csvCell(v) { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function ptStamp(ms) {
+    var p = K.laParts(ms), z = function (n) { return (n < 10 ? "0" : "") + n; };
+    return p.y + "-" + z(p.mo) + "-" + z(p.d) + " " + z(p.h) + ":" + z(p.mi) + ":" + z(p.s);
+  }
+  function historyCSV(rows) {
+    var head = ["date_time_pt", "draw_number", "mode"];
+    for (var i = 1; i <= 20; i++) head.push("n" + i);
+    head = head.concat(["bulls_eye", "card", "card_numbers", "spots", "matches", "bulls_eye_hit", "bulls_eye_bet", "bet", "payout"]);
+    var out = [head.join(",")];
+    // stored newest draw first (cards A..E within a draw): reverse draw order, keep card order
+    var groups = [], last = null;
+    rows.forEach(function (h) { var k = h.key || (h.drawNo ? "L" + h.drawNo : "t" + h.t); if (k !== last) { groups.push([]); last = k; } groups[groups.length - 1].push(h); });
+    [].concat.apply([], groups.reverse()).forEach(function (h) {           // oldest draw first
+      var nums = Array.isArray(h.nums) ? h.nums : [], r = [h.t ? ptStamp(h.t) : "", h.drawNo || "", h.mode || (h.drawNo || h.prepaid ? "Live" : "Instant")];
+      for (var i = 0; i < 20; i++) r.push(nums[i] != null ? nums[i] : "");
+      var j = typeof h.cardIdx === "number" ? h.cardIdx : -1;
+      r = r.concat([h.bullseye, j >= 0 ? K.LETTERS[j] : "", h.card, h.spots, h.matches, h.beHit ? "yes" : "no", h.be === false ? "no" : "yes",
+                    h.bet != null ? h.bet : "", h.won]);
+      out.push(r.map(csvCell).join(","));
+    });
+    return out.join("\r\n") + "\r\n";
+  }
+  function exportName(ms) { var p = K.laParts(ms), z = function (n) { return (n < 10 ? "0" : "") + n; }; return "cali_keno_history_" + p.y + z(p.mo) + z(p.d) + ".csv"; }
+  async function exportHistory() {
+    var msg = $("exportMsg");
+    if (!state.history.length) { msg.textContent = "No draws to export yet."; return; }
+    var csv = historyCSV(state.history), name = exportName(Date.now());
+    var draws = {}; state.history.forEach(function (h) { draws[h.key || h.t] = 1; });
+    var info = Object.keys(draws).length + " draws, " + state.history.length + " card rows";
+    try {
+      var file = new File([csv], name, { type: "text/csv" });
+      if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Cali Keno history" });
+        msg.textContent = "Shared " + name + " (" + info + ")."; return;
+      }
+    } catch (e) { if (e && e.name === "AbortError") { msg.textContent = "Export canceled."; return; } }
+    var url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    var a = document.createElement("a"); a.href = url; a.download = name; a.id = "exportLink";
+    a.textContent = "Download " + name; a.className = "big";
+    msg.innerHTML = ""; msg.appendChild(a); msg.appendChild(document.createTextNode(" (" + info + ")"));
+    a.click();
+  }
+  window.CK_EXPORT = { historyCSV: historyCSV, exportName: exportName };
+  $("exportBtn").onclick = exportHistory;
   $("clrHistBtn").onclick = function () { if (!state.busy) { state.history = []; save("calikeno.history", []); renderHist(); } };
 
   function perDraw() { return K.costPerDraw(state.cards); }
@@ -690,10 +741,11 @@ if (typeof module !== "undefined") module.exports = KENO;
     });
   }
   function historyFor(cards, res, dr, extra) {
+    var now = Date.now(), key = (extra && extra.drawNo) ? "L" + extra.drawNo : "I" + now + "-" + Math.floor(Math.random() * 1e6);
     // newest first: add card E..A so card A ends up on top for this draw
     for (var j = cards.length - 1; j >= 0; j--) {
       var c = cards[j], r = res.cards[j];
-      addHistory(Object.assign({ t: Date.now(), cardIdx: j, card: c.card.join("-"), spots: c.spots, be: c.be, bullseye: dr.be,
+      addHistory(Object.assign({ t: now, key: key, mode: extra && extra.drawNo ? "Live" : "Instant", nums: dr.nums.slice().sort(sortNum), cardIdx: j, card: c.card.join("-"), spots: c.spots, be: c.be, bullseye: dr.be,
         matches: r.matches, beHit: r.beHit, bet: r.bet, won: r.won }, extra || {}));
     }
   }

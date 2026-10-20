@@ -1,6 +1,6 @@
 // Cali Keno service worker: caches the app shell so the game works offline.
 // The cache name changes whenever any app file changes (content hash), so updates replace old caches.
-const CACHE = "cali-keno-b680180f4ec9";
+const CACHE = "cali-keno-9446b72ab468";
 const ASSETS = ["./", "index.html", "manifest.webmanifest", "apple-touch-icon.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (event) => {
